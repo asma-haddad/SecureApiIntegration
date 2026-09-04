@@ -17,9 +17,15 @@ namespace ExpenseAuthApi.Controllers
         }
 
         [HttpGet("{id}")]
+
+
         public async Task<IActionResult> GetById(int id)
         {
             var expense = await _context.Expenses
+
+
+
+
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (expense == null)
