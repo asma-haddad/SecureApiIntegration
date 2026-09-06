@@ -1,7 +1,7 @@
 using ExpenseAuthApi.Data;
 using ExpenseAuthApi.Middleware;
 using ExpenseAuthApi.Model;
-using ExpenseAuthApi.Services;
+using ExpenseAuthApi.Services.Token;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -9,41 +9,96 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key is missing");
+
+// ==========================
+// Controllers + OpenAPI
+// ==========================
+
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-builder.Services.AddControllers(); // ✅ تسجيل Controllers
+
+// ==========================
+// Database
+// ==========================
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseSqlite(
-        builder.Configuration.GetConnectionString("DefaultConnection"));
+        builder.Configuration
+            .GetConnectionString("DefaultConnection"));
 });
-builder.Services.AddScoped<ITokenService, ExpenseAuthApi.Services.Token.TokenService>();
+
+
+// ==========================
+// Services
+// ==========================
+
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddScoped<AccessTokenService>();
+
+builder.Services.AddScoped<RefreshTokenService>();
+
+builder.Services.AddScoped<
+    IPasswordHasher<User>,
+    PasswordHasher<User>>();
+
+
+// ==========================
+// Middleware
+// ==========================
+
 builder.Services.AddTransient<HandleExceptionMiddleware>();
-builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
+
+// ==========================
+// Authentication
+// ==========================
+
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddAuthentication(
+        JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
+        options.TokenValidationParameters =
+            new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
 
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+                ValidIssuer =
+                    builder.Configuration["Jwt:Issuer"],
 
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey)),
+                ValidAudience =
+                    builder.Configuration["Jwt:Audience"],
 
-            ClockSkew = TimeSpan.Zero
-        };
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtKey)),
+
+                ClockSkew = TimeSpan.Zero
+            };
     });
+
+builder.Services.AddAuthorization();
+
+
+// ==========================
+// Build App
+// ==========================
+
 var app = builder.Build();
+
+
+// ==========================
+// Middleware Pipeline
+// ==========================
 
 app.UseMiddleware<HandleExceptionMiddleware>();
 
@@ -53,8 +108,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
 app.UseAuthentication();
+
 app.UseAuthorization();
-app.MapControllers(); // ✅ ربط Routes تبع Controllers
+
+app.MapControllers();
 
 app.Run();

@@ -2,7 +2,7 @@
 using ExpenseAuthApi.DTOs;
 using ExpenseAuthApi.Exceptions;
 using ExpenseAuthApi.Model;
-using ExpenseAuthApi.Services;
+using ExpenseAuthApi.Services.Token;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
